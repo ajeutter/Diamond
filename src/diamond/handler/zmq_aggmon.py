@@ -5,6 +5,9 @@ Output the collected values through a Zer0MQ push channel to aggmon
 """
 
 from Handler import Handler
+import wdb
+import time
+import os
 
 try:
     import zmq
@@ -42,25 +45,19 @@ class aggmonHandler (Handler):
 
         # Initialize Data
         self.context = None
-
         self.socket = None
 
         # Initialize Options
         self.collector = self.config['collector']
-
-        # Create ZMQ PUSH socket and connect
-        self._connect()
-
+        
     def get_default_config_help(self):
         """
         Returns the help text for the configuration options for this handler
         """
         config = super(aggmonHandler, self).get_default_config_help()
-
         config.update({
             'collector': '',
         })
-
         return config
 
     def get_default_config(self):
@@ -68,11 +65,9 @@ class aggmonHandler (Handler):
         Return the default config for the handler
         """
         config = super(aggmonHandler, self).get_default_config()
-
         config.update({
             'collector': 'tcp://127.0.0.1:5555'
         })
-
         return config
 
     def _connect(self):
@@ -83,25 +78,36 @@ class aggmonHandler (Handler):
             return
         self.context = zmq.Context()
         self.socket = self.context.socket(zmq.PUSH)
-        self.socket.setsockopt(zmq.SNDHWM, 100000)
+        self.socket.setsockopt(zmq.SNDHWM, 10000)
         self.socket.connect(self.collector)
+        self.f.write("done _connect\npid=%d\n" % os.getpid())
 
     def __del__(self):
         """
           Destroy instance of the aggmonHandler class
         """
-        if not zmq:
-            return
-        self.socket.disconnect(self.collector)
-        self.socket.close()
-        self.context.destroy()
+        pass
+        #if not zmq:
+        #    return
+        #self.socket.disconnect(self.collector)
+        #self.socket.close()
+        #self.context.destroy()
 
     def process(self, metric):
         """
           Process a metric and send it to zmq pub socket
         """
+        self.f = open("/tmp/jmetric.log", "a")
+        self.f.write("in process %d\n" % os.getpid())
         if not zmq or not json:
             return
+        #
+        # With multiprocessing.Process() the zmq context must be created
+        # here and not in the __init__(). There we're in a different process!
+        #
+        if self.socket is None:
+            self._connect()
+
         host = metric.host
         if host is None:
             host = metric.path.split(".")[1]
@@ -110,7 +116,12 @@ class aggmonHandler (Handler):
         value = metric.value
         # Send the data as json encoded dict
         jmetric = json.dumps({"N": name, "H": host, "V": value, "T": timestamp})
+        self.f.write(jmetric + "\n")
         #
         # We can risk to lose the data, therefore send it with NOBLOCK
         #
+        #wdb.set_trace()
         self.socket.send(jmetric, flags=zmq.NOBLOCK)
+        #self.f.write("socket.send returned %r\n" % res)
+        self.f.close()
+
