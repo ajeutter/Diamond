@@ -80,7 +80,6 @@ class aggmonHandler (Handler):
         self.socket = self.context.socket(zmq.PUSH)
         self.socket.setsockopt(zmq.SNDHWM, 10000)
         self.socket.connect(self.collector)
-        self.f.write("done _connect\npid=%d\n" % os.getpid())
 
     def __del__(self):
         """
@@ -97,8 +96,6 @@ class aggmonHandler (Handler):
         """
           Process a metric and send it to zmq pub socket
         """
-        self.f = open("/tmp/jmetric.log", "a")
-        self.f.write("in process %d\n" % os.getpid())
         if not zmq or not json:
             return
         #
@@ -116,12 +113,11 @@ class aggmonHandler (Handler):
         value = metric.value
         # Send the data as json encoded dict
         jmetric = json.dumps({"N": name, "H": host, "V": value, "T": timestamp})
-        self.f.write(jmetric + "\n")
         #
         # We can risk to lose the data, therefore send it with NOBLOCK
         #
-        #wdb.set_trace()
-        self.socket.send(jmetric, flags=zmq.NOBLOCK)
-        #self.f.write("socket.send returned %r\n" % res)
-        self.f.close()
+        try:
+            self.socket.send(jmetric, flags=zmq.NOBLOCK)
+        except Exception as e:
+            pass
 
