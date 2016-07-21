@@ -108,8 +108,10 @@ class aggmonHandler (Handler):
         host = metric.host
         if host is None:
             host = metric.path.split(".")[1]
+            name = ".".join(metric.path.split(".")[2:])
+        else:
+            name = metric.getCollectorPath() + "." + metric.getMetricPath()
         timestamp = float(metric.timestamp)
-        name = metric.getCollectorPath() + "." + metric.getMetricPath()
         value = metric.value
         # Send the data as json encoded dict
         jmetric = json.dumps({"N": name, "H": host, "V": value, "T": timestamp})
