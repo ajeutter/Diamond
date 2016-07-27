@@ -106,9 +106,11 @@ class aggmonHandler (Handler):
             self._connect()
 
         host = metric.host
+        mp = metric.path.split(":")
         if host is None:
             host = metric.path.split(".")[1]
-            name = ".".join(metric.path.split(".")[2:])
+        if mp[0] == "servers"
+            name = ".".join(mp[2:])
         else:
             name = metric.getCollectorPath() + "." + metric.getMetricPath()
         timestamp = float(metric.timestamp)
